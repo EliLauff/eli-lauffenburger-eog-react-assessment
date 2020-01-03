@@ -8,6 +8,39 @@ import 'react-toastify/dist/ReactToastify.css';
 import Header from './components/Header';
 import Wrapper from './components/Wrapper';
 import NowWhat from './components/NowWhat';
+import Dashboard from './components/Dashboard';
+import { ApolloClient } from 'apollo-boost';
+import { ApolloProvider } from '@apollo/react-hooks';
+import { InMemoryCache } from 'apollo-cache-inmemory';
+import { HttpLink } from 'apollo-link-http';
+import { split } from 'apollo-link';
+import { WebSocketLink } from 'apollo-link-ws';
+import { getMainDefinition } from 'apollo-utilities';
+
+const wsLink = new WebSocketLink({
+  uri: 'ws://react.eogresources.com/graphql',
+  options: {
+    reconnect: true,
+  },
+});
+
+const httpLink = new HttpLink({
+  uri: 'https://react.eogresources.com/graphql',
+});
+
+const link = split(
+  ({ query }) => {
+    const definition = getMainDefinition(query);
+    return definition.kind === 'OperationDefinition' && definition.operation === 'subscription';
+  },
+  wsLink,
+  httpLink,
+);
+
+export const client = new ApolloClient({
+  link,
+  cache: new InMemoryCache(),
+});
 
 const store = createStore();
 const theme = createMuiTheme({
@@ -28,11 +61,14 @@ const App = () => (
   <MuiThemeProvider theme={theme}>
     <CssBaseline />
     <Provider store={store}>
-      <Wrapper>
-        <Header />
-        <NowWhat />
-        <ToastContainer />
-      </Wrapper>
+      <ApolloProvider client={client}>
+        <Wrapper>
+          <Header />
+          <Dashboard />
+          {/* <NowWhat /> */}
+          <ToastContainer />
+        </Wrapper>
+      </ApolloProvider>
     </Provider>
   </MuiThemeProvider>
 );
