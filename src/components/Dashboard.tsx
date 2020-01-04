@@ -2,7 +2,7 @@ import React from 'react';
 import { makeStyles } from '@material-ui/core/styles';
 import { Card, CardContent } from '@material-ui/core';
 import DashHeader from './DashHeader';
-// import Chart from './Chart';
+import Chart from './Chart';
 import { gql } from 'apollo-boost';
 import { client } from '../App';
 
@@ -140,7 +140,7 @@ interface MetricNode {
   measurements: Measurement[];
 }
 
-interface TransformedMetricNode {
+export interface TransformedMetricNode {
   metric: string;
   unit: string;
   stroke: string;
@@ -184,21 +184,23 @@ const dataTransformer = (data: MetricNode[]) => {
 
 export default () => {
   const classes = useStyles();
+  const [metricStrings, setMetricStrings] = React.useState<string[]>([]);
   const [selection, setSelection] = React.useState<string[]>([]);
   const [metrics, setMetrics] = React.useState<TransformedMetricNode[]>([]);
   const [data, setData] = React.useState<any[]>([]);
   const [selectedMetrics, setSelectedMetrics] = React.useState<TransformedMetricNode[]>([]);
-  let allMetricStrings: string[] = [];
 
   React.useEffect(() => {
     const initialFetch = async () => {
-      allMetricStrings = await fetchMetrics();
-      console.log(allMetricStrings);
-      const dataRes = await fetchData(allMetricStrings);
+      const metricsRes = await fetchMetrics();
+      console.log(metricsRes);
+      const dataRes = await fetchData(metricsRes);
       connectSubscriptions();
+      console.log(dataRes);
       const transformedData = dataTransformer(dataRes);
       const transformedMetrics = metricTransformer(dataRes);
       console.log('got data');
+      setMetricStrings(metricsRes);
       setMetrics(transformedMetrics);
       setData(transformedData);
     };
@@ -215,8 +217,10 @@ export default () => {
 
   return (
     <Card className={classes.card}>
-      <DashHeader metrics={allMetricStrings} selection={selection} setSelection={setSelection} />
-      <CardContent>{/* <Chart data={data} selectedMetrics={selectedMetrics} /> */}</CardContent>
+      <DashHeader metrics={metricStrings} selection={selection} setSelection={setSelection} />
+      <CardContent>
+        <Chart data={data} selectedMetrics={selectedMetrics} />
+      </CardContent>
     </Card>
   );
 };

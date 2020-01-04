@@ -10,6 +10,7 @@ const useStyles = makeStyles({
 });
 
 export default (props: { metrics: string[]; selection: string[]; setSelection: Function }) => {
+  console.log(props.metrics);
   const classes = useStyles();
   return (
     <CardContent className={classes.taskBar}>
