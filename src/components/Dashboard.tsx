@@ -56,14 +56,6 @@ const addZero = (i: string | number) => {
   return i;
 };
 
-const dateFormatter = (ms: string | number | Date) => {
-  const d = new Date(ms);
-  const h = addZero(d.getHours());
-  const m = addZero(d.getMinutes());
-  const s = addZero(d.getSeconds());
-  return h + ':' + m + ':' + s;
-};
-
 const getMetricsQuery = `
   query{
     getMetrics
@@ -141,67 +133,100 @@ interface MetricNode {
 }
 
 export interface TransformedMetricNode {
-  metric: string;
-  unit: string;
-  stroke: string;
+  x: string[];
+  y: number[];
+  name: string;
+  yaxis: string;
+  type: string;
 }
 
-const metricFilter = (metrics: TransformedMetricNode[], selection: string[]) => {
-  return metrics.filter(metricNode => {
-    return selection.includes(metricNode.metric);
+const dataFilter = (data: Plotly.Data[], selection: (string | undefined)[]) => {
+  let returnArr = data.filter(metricObj => {
+    return selection.includes(metricObj.name);
   });
-};
 
-const metricTransformer = (data: MetricNode[]) => {
-  const colorArr = ['#a83a32', '#2d8fa1', '#5ba12d', '#9c2894', '#e6ad8e', '#32403f'];
-  let returnArr: TransformedMetricNode[] = [];
-  data.forEach((metricNode, index) => {
-    returnArr.push({
-      metric: metricNode.metric,
-      unit: metricNode.measurements[0].unit,
-      stroke: colorArr[index],
-    });
-  });
+  //workaround for limitation with Plotly - it was unable to display pressure and injValveOpen
+  //together without having temperature present. This dummy object tricks it into thinking the primary yaxis is present.
+  const dummyObj: Plotly.Data = {
+    x: [],
+    y: [],
+    name: '',
+    yaxis: 'y',
+    type: 'scatter',
+    line: { color: '#444' },
+  };
+
+  returnArr.push(dummyObj);
+
   return returnArr;
 };
 
+// const metricTransformer = (data: MetricNode[]) => {
+//   const colorArr = ['#a83a32', '#2d8fa1', '#5ba12d', '#9c2894', '#e6ad8e', '#32403f'];
+//   let returnArr: TransformedMetricNode[] = [];
+//   data.forEach((metricNode, index) => {
+//     returnArr.push({
+//       metric: metricNode.metric,
+//       unit: metricNode.measurements[0].unit,
+//       stroke: colorArr[index],
+//     });
+//   });
+//   return returnArr;
+// };
+
 const dataTransformer = (data: MetricNode[]) => {
-  const returnArr: any[] = [];
+  const returnArr: Plotly.Data[] = [];
+  const colorArr: string[] = ['#a83a32', '#2d8fa1', '#5ba12d', '#9c2894', '#e6ad8e', '#32403f'];
   data.forEach(metricNode => {
+    let metricObj: Plotly.Data = {
+      x: [],
+      y: [],
+      name: '',
+      yaxis: '',
+      type: 'scatter',
+      line: { color: colorArr[data.indexOf(metricNode)] },
+    };
     metricNode.measurements.forEach(measurement => {
-      returnArr.push({
-        time: dateFormatter(measurement.at),
-      });
+      (metricObj.x as Plotly.Datum[]).push(new Date(measurement.at));
+      (metricObj.y as Plotly.Datum[]).push(measurement.value);
     });
+    metricObj.name = metricNode.metric;
+    switch (metricNode.measurements[0].unit) {
+      case 'F':
+        metricObj.yaxis = 'y';
+        break;
+      case 'PSI':
+        metricObj.yaxis = 'y2';
+        break;
+      case '%':
+        metricObj.yaxis = 'y3';
+    }
+    returnArr.push(metricObj);
   });
-  data.forEach(metricNode => {
-    metricNode.measurements.forEach((measurement, index) => {
-      returnArr[index][`${measurement.metric}`] = measurement.value;
-    });
-  });
+  console.log(returnArr);
   return returnArr;
 };
 
 export default () => {
   const classes = useStyles();
   const [metricStrings, setMetricStrings] = React.useState<string[]>([]);
-  const [selection, setSelection] = React.useState<string[]>([]);
-  const [metrics, setMetrics] = React.useState<TransformedMetricNode[]>([]);
-  const [data, setData] = React.useState<any[]>([]);
-  const [selectedMetrics, setSelectedMetrics] = React.useState<TransformedMetricNode[]>([]);
+  const [selection, setSelection] = React.useState<(string | undefined)[]>([]);
+  //   const [metrics, setMetrics] = React.useState<TransformedMetricNode[]>([]);
+  const [data, setData] = React.useState<Plotly.Data[]>([]);
+  const [filteredData, setFilteredData] = React.useState<Plotly.Data[]>([]);
 
   React.useEffect(() => {
     const initialFetch = async () => {
       const metricsRes = await fetchMetrics();
       console.log(metricsRes);
       const dataRes = await fetchData(metricsRes);
-      connectSubscriptions();
+      //   connectSubscriptions();
       console.log(dataRes);
       const transformedData = dataTransformer(dataRes);
-      const transformedMetrics = metricTransformer(dataRes);
+      //   const transformedMetrics = metricTransformer(dataRes);
       console.log('got data');
       setMetricStrings(metricsRes);
-      setMetrics(transformedMetrics);
+      //   setMetrics(transformedMetrics);
       setData(transformedData);
     };
     initialFetch();
@@ -209,17 +234,17 @@ export default () => {
 
   React.useEffect(() => {
     console.log('before filter');
-    const filteredMetrics = metricFilter(metrics, selection);
-    console.log(filteredMetrics);
+    const filteredDataValue = dataFilter(data, selection);
+    console.log(filteredDataValue);
     console.log('after filter');
-    setSelectedMetrics(filteredMetrics);
-  }, [metrics, selection]);
+    setFilteredData(filteredDataValue);
+  }, [data, selection]);
 
   return (
     <Card className={classes.card}>
       <DashHeader metrics={metricStrings} selection={selection} setSelection={setSelection} />
-      <CardContent>
-        <Chart data={data} selectedMetrics={selectedMetrics} />
+      <CardContent style={{ padding: 0 }}>
+        <Chart data={filteredData} />
       </CardContent>
     </Card>
   );

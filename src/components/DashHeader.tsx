@@ -9,13 +9,13 @@ const useStyles = makeStyles({
   },
 });
 
-export default (props: { metrics: string[]; selection: string[]; setSelection: Function }) => {
+export default (props: { metrics: string[]; selection: (string | undefined)[]; setSelection: Function }) => {
   console.log(props.metrics);
   const classes = useStyles();
   return (
     <CardContent className={classes.taskBar}>
       <Grid container spacing={4} justify="space-between">
-        <Grid item xs={12} sm={5}></Grid>
+        <Grid item xs={12} sm={6}></Grid>
         <Grid item xs={12} sm={6}>
           <SelectBox metrics={props.metrics} selection={props.selection} setSelection={props.setSelection} />
         </Grid>

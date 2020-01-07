@@ -5,9 +5,11 @@ import { Select, MenuItem, FormControl, InputLabel, Input, Chip } from '@materia
 const useStyles = makeStyles((theme: Theme) =>
   createStyles({
     formControl: {
-      margin: theme.spacing(1),
-      minWidth: 120,
-      maxWidth: 300,
+      // margin: theme.spacing(1),
+      // marginLeft: theme.spacing(3),
+      // marginRight: theme.spacing(3),
+      minWidth: 250,
+      float: 'right',
     },
     chips: {
       display: 'flex',
@@ -33,14 +35,14 @@ const MenuProps = {
   },
 };
 
-function getStyles(input: string, selection: string[], theme: Theme) {
+function getStyles(input: string, selection: (string | undefined)[], theme: Theme) {
   return {
     fontWeight:
       selection.indexOf(input) === -1 ? theme.typography.fontWeightRegular : theme.typography.fontWeightMedium,
   };
 }
 
-export default (props: { metrics: string[]; selection: string[]; setSelection: Function }) => {
+export default (props: { metrics: string[]; selection: (string | undefined)[]; setSelection: Function }) => {
   const classes = useStyles();
   const theme = useTheme();
   const { selection, setSelection, metrics } = props;
@@ -48,11 +50,11 @@ export default (props: { metrics: string[]; selection: string[]; setSelection: F
   console.log(selection);
 
   const handleChange = (event: React.ChangeEvent<{ value: unknown }>) => {
-    setSelection(event.target.value as string[]);
+    setSelection(event.target.value as (string | undefined)[]);
   };
 
   return (
-    <FormControl className={classes.formControl} fullWidth>
+    <FormControl className={classes.formControl}>
       <InputLabel id="demo-mutiple-chip-label">Select metrics...</InputLabel>
       <Select
         labelId="demo-mutiple-chip-label"
@@ -63,7 +65,7 @@ export default (props: { metrics: string[]; selection: string[]; setSelection: F
         input={<Input id="select-multiple-chip" />}
         renderValue={selected => (
           <div className={classes.chips}>
-            {(selected as string[]).map(value => (
+            {(selected as (string | undefined)[]).map(value => (
               <Chip key={value} label={value} className={classes.chip} />
             ))}
           </div>

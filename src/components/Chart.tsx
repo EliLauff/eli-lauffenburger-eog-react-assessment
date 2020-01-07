@@ -1,47 +1,73 @@
 import React from 'react';
-import { LineChart, Line, CartesianGrid, XAxis, YAxis, ResponsiveContainer, Tooltip, Legend } from 'recharts';
+import Plot from 'react-plotly.js';
 import { TransformedMetricNode } from './Dashboard';
+import { Container } from '@material-ui/core';
+import { makeStyles } from '@material-ui/core/styles';
 
-const setToUnique = (units: string[]) => {
-  return units.filter((value, index) => {
-    return units.indexOf(value) === index;
-  });
-};
+const useStyles = makeStyles({
+  plotArea: {
+    width: '100%',
+    height: '100%',
+  },
+});
 
-export default (props: { data: any; selectedMetrics: TransformedMetricNode[] }) => {
-  const { data, selectedMetrics } = props;
-  let selectedUnits: string[] = [];
-  if (selectedMetrics) {
-    selectedUnits = setToUnique(selectedMetrics.map((metricNode: { unit: string }) => metricNode.unit));
+export default (props: { data: Plotly.Data[] }) => {
+  const classes = useStyles();
+  const { data } = props;
+
+  //workaround for limitation with Plotly - it was unable to display pressure and injValveOpen
+  //together without having temperature present.  This checks for if the user has passed actual temperature data to the
+  //chart, rather than just the dummy object.
+  const tempPresent = data.filter(node => node.yaxis === 'y').length > 1;
+
+  if (data.length > 1) {
+    console.log(data);
+    console.log(tempPresent);
+    return (
+      <Plot
+        className={classes.plotArea}
+        data={data}
+        useResizeHandler={true}
+        layout={{
+          margin: { t: 85, b: 80 },
+          autosize: true,
+          xaxis: { domain: [0.1, 1] },
+          yaxis: {
+            title: 'temperature (F)',
+            showline: true,
+            zeroline: false,
+            ticks: 'outside',
+            visible: tempPresent,
+          },
+          yaxis2: {
+            title: 'pressure (PSI)',
+            overlaying: 'y',
+            anchor: 'free',
+            position: -0.1,
+            side: 'left',
+            showline: true,
+            zeroline: false,
+            tickmode: 'auto',
+            ticks: 'inside',
+            ticklen: 20,
+            tickcolor: '#b8b8b8',
+          },
+          yaxis3: {
+            title: 'injection valve opening (%)',
+            overlaying: 'y',
+            side: 'right',
+            showline: true,
+            zeroline: false,
+            ticks: 'outside',
+          },
+          legend: { orientation: 'h', y: 1.2 },
+        }}
+        config={{
+          displayModeBar: false,
+        }}
+      />
+    );
+  } else {
+    return null;
   }
-  console.log(data);
-  console.log('in render');
-  console.log(selectedMetrics);
-  console.log(selectedUnits);
-  return (
-    <ResponsiveContainer width="100%" height={450}>
-      <LineChart data={data}>
-        <CartesianGrid stroke="3" />
-        <XAxis name="time" dataKey="time" allowDuplicatedCategory={false} />
-        {selectedUnits.map(unit => {
-          return <YAxis key={unit} yAxisId={unit} unit={unit} />;
-        })}
-        <Tooltip />
-        <Legend />
-        {selectedMetrics.map(metricNode => {
-          return (
-            <Line
-              key={metricNode.metric}
-              type="monotone"
-              dataKey={metricNode.metric}
-              stroke={metricNode.stroke}
-              yAxisId={metricNode.unit}
-              unit={metricNode.unit}
-              dot={false}
-            />
-          );
-        })}
-      </LineChart>
-    </ResponsiveContainer>
-  );
 };
