@@ -27,13 +27,14 @@ export default (props: { data: Plotly.Data[] }) => {
         layout={{
           margin: { t: 85, b: 80 },
           autosize: true,
-          xaxis: { domain: [0.1, 1] },
+          xaxis: { domain: [0.1, 1], fixedrange: true },
           yaxis: {
             title: 'temperature (F)',
             showline: true,
             zeroline: false,
             ticks: 'outside',
             visible: tempPresent,
+            fixedrange: true,
           },
           yaxis2: {
             title: 'pressure (PSI)',
@@ -47,6 +48,7 @@ export default (props: { data: Plotly.Data[] }) => {
             ticks: 'inside',
             ticklen: 20,
             tickcolor: '#b8b8b8',
+            fixedrange: true,
           },
           yaxis3: {
             title: 'injection valve opening (%)',
@@ -55,6 +57,7 @@ export default (props: { data: Plotly.Data[] }) => {
             showline: true,
             zeroline: false,
             ticks: 'outside',
+            fixedrange: true,
           },
           legend: { orientation: 'h', y: 1.2 },
         }}
