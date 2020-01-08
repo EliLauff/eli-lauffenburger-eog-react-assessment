@@ -1,7 +1,5 @@
 import React from 'react';
 import Plot from 'react-plotly.js';
-import { TransformedMetricNode } from './Dashboard';
-import { Container } from '@material-ui/core';
 import { makeStyles } from '@material-ui/core/styles';
 
 const useStyles = makeStyles({
@@ -21,8 +19,6 @@ export default (props: { data: Plotly.Data[] }) => {
   const tempPresent = data.filter(node => node.yaxis === 'y').length > 1;
 
   if (data.length > 1) {
-    console.log(data);
-    console.log(tempPresent);
     return (
       <Plot
         className={classes.plotArea}

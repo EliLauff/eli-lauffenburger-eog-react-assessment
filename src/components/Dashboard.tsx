@@ -3,8 +3,9 @@ import { makeStyles } from '@material-ui/core/styles';
 import { Card, CardContent } from '@material-ui/core';
 import DashHeader from './DashHeader';
 import Chart from './Chart';
-import { gql } from 'apollo-boost';
 import { client } from '../App';
+import { useSubscription } from '@apollo/react-hooks';
+import { gql } from '@apollo/client';
 
 const useStyles = makeStyles({
   card: {
@@ -49,13 +50,6 @@ const useStyles = makeStyles({
 
 const thirtyMinutesAgo = new Date(Date.now() - 30 * 60000).getTime();
 
-const addZero = (i: string | number) => {
-  if (i < 10) {
-    i = '0' + i;
-  }
-  return i;
-};
-
 const getMetricsQuery = `
   query{
     getMetrics
@@ -84,14 +78,16 @@ const getDataQuery = (inputQuery: string[]) => {
 `;
 };
 
-const subscription = `subscription {
-  newMeasurement {
-    metric,
-    at,
-    value,
-    unit
+const newMeasurementsSub = gql`
+  subscription {
+    newMeasurement {
+      metric
+      at
+      value
+      unit
+    }
   }
-}`;
+`;
 
 const fetchMetrics = async () => {
   const res = await client.query({
@@ -111,15 +107,6 @@ const fetchData = async (metrics: string[]) => {
   return res.data.getMultipleMeasurements;
 };
 
-const connectSubscriptions = async () => {
-  const res = await client.subscribe({
-    query: gql`
-      ${subscription}
-    `,
-  });
-  console.log(res);
-};
-
 interface Measurement {
   metric: string;
   at: number;
@@ -127,17 +114,13 @@ interface Measurement {
   unit: string;
 }
 
+interface MeasurementSub {
+  newMeasurement: Measurement;
+}
+
 interface MetricNode {
   metric: string;
   measurements: Measurement[];
-}
-
-export interface TransformedMetricNode {
-  x: string[];
-  y: number[];
-  name: string;
-  yaxis: string;
-  type: string;
 }
 
 const dataFilter = (data: Plotly.Data[], selection: (string | undefined)[]) => {
@@ -160,19 +143,6 @@ const dataFilter = (data: Plotly.Data[], selection: (string | undefined)[]) => {
 
   return returnArr;
 };
-
-// const metricTransformer = (data: MetricNode[]) => {
-//   const colorArr = ['#a83a32', '#2d8fa1', '#5ba12d', '#9c2894', '#e6ad8e', '#32403f'];
-//   let returnArr: TransformedMetricNode[] = [];
-//   data.forEach((metricNode, index) => {
-//     returnArr.push({
-//       metric: metricNode.metric,
-//       unit: metricNode.measurements[0].unit,
-//       stroke: colorArr[index],
-//     });
-//   });
-//   return returnArr;
-// };
 
 const dataTransformer = (data: MetricNode[]) => {
   const returnArr: Plotly.Data[] = [];
@@ -203,7 +173,6 @@ const dataTransformer = (data: MetricNode[]) => {
     }
     returnArr.push(metricObj);
   });
-  console.log(returnArr);
   return returnArr;
 };
 
@@ -211,34 +180,47 @@ export default () => {
   const classes = useStyles();
   const [metricStrings, setMetricStrings] = React.useState<string[]>([]);
   const [selection, setSelection] = React.useState<(string | undefined)[]>([]);
-  //   const [metrics, setMetrics] = React.useState<TransformedMetricNode[]>([]);
-  const [data, setData] = React.useState<Plotly.Data[]>([]);
+  const [initialData, setInitialData] = React.useState<Plotly.Data[]>([]);
   const [filteredData, setFilteredData] = React.useState<Plotly.Data[]>([]);
+  const { loading, data } = useSubscription<MeasurementSub>(newMeasurementsSub);
+  const [prevSubData, setPrevSubData] = React.useState<Measurement>({metric: "", at: 0, value: 0, unit: ""});
 
   React.useEffect(() => {
     const initialFetch = async () => {
       const metricsRes = await fetchMetrics();
-      console.log(metricsRes);
       const dataRes = await fetchData(metricsRes);
-      //   connectSubscriptions();
-      console.log(dataRes);
       const transformedData = dataTransformer(dataRes);
-      //   const transformedMetrics = metricTransformer(dataRes);
-      console.log('got data');
       setMetricStrings(metricsRes);
-      //   setMetrics(transformedMetrics);
-      setData(transformedData);
+      setInitialData(transformedData);
     };
     initialFetch();
   }, []);
 
   React.useEffect(() => {
-    console.log('before filter');
-    const filteredDataValue = dataFilter(data, selection);
-    console.log(filteredDataValue);
-    console.log('after filter');
+    const filteredDataValue = dataFilter(initialData, selection);
     setFilteredData(filteredDataValue);
-  }, [data, selection]);
+  }, [initialData, selection]);
+
+  React.useEffect(()=>{
+    if (!loading && (data?.newMeasurement.at !== prevSubData.at || data.newMeasurement.value !== prevSubData.value)) {
+        console.log(data?.newMeasurement);
+        let measurementNode = data?.newMeasurement
+        let matchingSet = initialData.find((metricNode)=>metricNode.name === measurementNode?.metric);
+        if (matchingSet && measurementNode){
+          (matchingSet.x as Plotly.Datum[]).push(new Date(measurementNode.at));
+          (matchingSet.y as Plotly.Datum[]).push(measurementNode.value);
+          const updatedData = initialData.map((metricNode)=>{
+            if(metricNode.name === measurementNode?.metric){
+              return matchingSet
+            } else {
+              return metricNode
+            }
+          });
+          setInitialData(updatedData as Plotly.Data[]);
+          if (data) {setPrevSubData(data.newMeasurement)}
+        }
+      }
+  },[initialData, loading, data, prevSubData])
 
   return (
     <Card className={classes.card}>

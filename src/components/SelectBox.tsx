@@ -5,9 +5,6 @@ import { Select, MenuItem, FormControl, InputLabel, Input, Chip } from '@materia
 const useStyles = makeStyles((theme: Theme) =>
   createStyles({
     formControl: {
-      // margin: theme.spacing(1),
-      // marginLeft: theme.spacing(3),
-      // marginRight: theme.spacing(3),
       minWidth: 250,
       float: 'right',
     },
@@ -46,8 +43,6 @@ export default (props: { metrics: string[]; selection: (string | undefined)[]; s
   const classes = useStyles();
   const theme = useTheme();
   const { selection, setSelection, metrics } = props;
-  console.log(metrics);
-  console.log(selection);
 
   const handleChange = (event: React.ChangeEvent<{ value: unknown }>) => {
     setSelection(event.target.value as (string | undefined)[]);
