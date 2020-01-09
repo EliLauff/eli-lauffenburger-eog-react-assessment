@@ -50,14 +50,12 @@ export default (props: { metrics: string[]; selection: (string | undefined)[]; s
 
   return (
     <FormControl className={classes.formControl}>
-      <InputLabel id="demo-mutiple-chip-label">Select metrics...</InputLabel>
+      <InputLabel>Select metrics...</InputLabel>
       <Select
-        labelId="demo-mutiple-chip-label"
-        id="demo-mutiple-chip"
         multiple
         value={selection}
         onChange={handleChange}
-        input={<Input id="select-multiple-chip" />}
+        input={<Input />}
         renderValue={selected => (
           <div className={classes.chips}>
             {(selected as (string | undefined)[]).map(value => (
